@@ -4,16 +4,20 @@ import { useState } from "react";
 
 export default function ChatInput({
   onSend,
+  disabled = false,
 }: {
   onSend: (msg: string) => void;
+  disabled?: boolean;
 }) {
   const [input, setInput] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
-    onSend(input);
-    setInput("");
+    if (input.trim() && !disabled) {
+      // Cek disabled di sini
+      onSend(input);
+      setInput("");
+    }
   };
 
   return (
@@ -27,8 +31,13 @@ export default function ChatInput({
         placeholder="Ketik pesan..."
         value={input}
         onChange={(e) => setInput(e.target.value)}
+        disabled={disabled}
       />
-      <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+      <button
+        type="submit"
+        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed"
+        disabled={disabled || !input.trim()} // Terapkan disabled ke button
+      >
         Kirim
       </button>
     </form>
