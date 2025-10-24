@@ -6,10 +6,10 @@ import ChatSession from "@/models/ChatSession";
 // ✅ UPDATE SESSION (PUT)
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   await connectDB();
-  const { id } = params;
+  const id = (await params).id;
   const { title } = await req.json();
 
   try {
@@ -37,10 +37,10 @@ export async function PUT(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   await connectDB();
-  const { id } = params;
+  const id = (await params).id;
 
   try {
     const deleted = await ChatSession.findByIdAndDelete(id);
@@ -63,10 +63,10 @@ export async function DELETE(
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   await connectDB();
-  const { id } = params;
+  const id = (await params).id;
 
   try {
     const session = await ChatSession.findById(id);
