@@ -1,18 +1,28 @@
 import mongoose, { Schema, Document, models } from "mongoose";
 
-export interface IChatSession extends Document {
+interface IChatSession extends Document {
   userId: string;
   title: string;
-  preview?: string;
+  preview: string;
+  messages: mongoose.Types.ObjectId[]; // ✅ tambahkan ini
   createdAt: Date;
 }
 
-const ChatSessionSchema = new Schema<IChatSession>({
-  userId: { type: String, required: true },
-  title: { type: String, required: true },
-  preview: { type: String },
-  createdAt: { type: Date, default: Date.now },
-});
+const ChatSessionSchema = new Schema<IChatSession>(
+  {
+    userId: { type: String, required: true },
+    title: { type: String, required: true },
+    preview: { type: String, default: "" },
+    messages: [{ type: Schema.Types.ObjectId, ref: "Chat" }], // ✅ tambahkan
+    createdAt: { type: Date, default: Date.now },
+  },
+  {
+    collection: "chatsessions",
+  }
+);
 
-export default models.ChatSession ||
+const ChatSession =
+  models.ChatSession ||
   mongoose.model<IChatSession>("ChatSession", ChatSessionSchema);
+
+export default ChatSession;
