@@ -18,6 +18,14 @@ export default function ChatBox({
 }) {
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      {/* Jika loading tapi belum ada message → tampilkan status loading chat */}
+      {loading && messages.length === 0 && (
+        <div className="bg-gray-200 text-gray-600 px-3 py-2 rounded-xl w-fit">
+          Memuat chat...
+        </div>
+      )}
+
+      {/* Render semua pesan */}
       {messages.map((m, i) => (
         <div
           key={i}
@@ -27,7 +35,6 @@ export default function ChatBox({
               : "bg-gray-100 text-gray-900"
           }`}
         >
-          {/* Gunakan ReactMarkdown agar teks bisa di-style seperti dokumen */}
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
@@ -51,7 +58,8 @@ export default function ChatBox({
         </div>
       ))}
 
-      {loading && (
+      {/* Jika sedang menunggu balasan dari bot */}
+      {loading && messages.length > 0 && (
         <div className="bg-gray-200 text-gray-600 px-3 py-2 rounded-xl w-fit">
           Mengetik...
         </div>
