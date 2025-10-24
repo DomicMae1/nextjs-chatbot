@@ -2,6 +2,7 @@ import mongoose, { Schema, Document, models } from "mongoose";
 
 interface IChat extends Document {
   userId: string;
+  sessionId: string;
   message: string;
   response: string;
   timestamp: Date;
@@ -10,6 +11,7 @@ interface IChat extends Document {
 const ChatSchema = new Schema<IChat>(
   {
     userId: { type: String, required: true },
+    sessionId: { type: String, required: true },
     message: { type: String, required: true },
     response: { type: String, required: true },
     timestamp: { type: Date, default: Date.now },
