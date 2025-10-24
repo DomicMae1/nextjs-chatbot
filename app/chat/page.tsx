@@ -32,6 +32,11 @@ export default function ChatPage() {
 
   const handleLogout = async () => {
     await signOut(auth);
+    setMessages([]);
+    setSessions([]);
+    setSelectedSession(null);
+    setUser(null);
+    setUserData(null);
     router.push("/login");
   };
 
@@ -69,7 +74,6 @@ export default function ChatPage() {
           if (sessionsData.length > 0) {
             const firstSessionId = sessionsData[0]._id;
             setSelectedSession(firstSessionId);
-            await loadChatHistory(currentUser.uid, firstSessionId);
           } else {
             setSelectedSession(null);
             setMessages([]);
@@ -87,57 +91,28 @@ export default function ChatPage() {
     return () => unsubscribe();
   }, [router]);
 
-  const loadChatHistory = async (userId: string, sessionId: string) => {
-    if (!userId || !sessionId) {
-      setMessages([]);
-      return;
-    }
-    setLoading(true);
-    setMessages([]);
-    try {
-      const resChat = await fetch(
-        `/api/chat/history?userId=${userId}&sessionId=${sessionId}`
-      );
-      if (!resChat.ok) throw new Error("Gagal memuat riwayat");
-      const chatData = await resChat.json();
-
-      const formatted = chatData
-        .map((c: any) => [
-          { sender: "user", text: c.message },
-          { sender: "bot", text: c.response },
-        ])
-        .flat();
-
-      setMessages(formatted);
-    } catch (err) {
-      console.error("Error loading history:", err);
-      setMessages([
-        {
-          sender: "bot",
-          text: "⚠️ Terjadi kesalahan saat memuat riwayat chat.",
-        },
-      ]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSelectSession = async (sessionId: string) => {
     if (!user) return;
-
     if (selectedSession === sessionId) return;
 
-    setLoading(true);
+    // 🔹 Kosongkan dulu
     setMessages([]);
     setSelectedSession(sessionId);
+    setLoading(true);
+
+    // 🔹 Tambahkan sedikit delay agar transisi halus
+    await new Promise((r) => setTimeout(r, 80));
 
     try {
-      const resChat = await fetch(
+      const res = await fetch(
         `/api/chat/history?userId=${user.uid}&sessionId=${sessionId}`
       );
-      const chatData = await resChat.json();
 
-      const formatted = chatData
+      if (!res.ok) throw new Error("Gagal memuat chat session");
+
+      const data = await res.json();
+
+      const formatted = data
         .map((c: any) => [
           { sender: "user", text: c.message },
           { sender: "bot", text: c.response },
@@ -147,12 +122,7 @@ export default function ChatPage() {
       setMessages(formatted);
     } catch (err) {
       console.error(err);
-      setMessages([
-        {
-          sender: "bot",
-          text: "⚠️ Terjadi kesalahan saat memuat riwayat chat.",
-        },
-      ]);
+      setMessages([{ sender: "bot", text: "⚠️ Gagal memuat riwayat chat." }]);
     } finally {
       setLoading(false);
     }
@@ -161,6 +131,7 @@ export default function ChatPage() {
   const handleNewSession = async () => {
     if (!user) return;
 
+    // Kosongkan chat box sebelum bikin sesi baru
     setMessages([]);
 
     const resNewSession = await fetch("/api/chat/sessions", {
@@ -175,13 +146,20 @@ export default function ChatPage() {
     const newSession = await resNewSession.json();
     setSessions((prev) => [newSession, ...prev]);
     setSelectedSession(newSession._id);
+
+    // Pastikan tampilan kosong dulu sebelum user kirim pesan pertama
+    await new Promise((r) => setTimeout(r, 50));
   };
 
   const handleSend = async (message: string) => {
-    if (!user) return;
+    if (!user || !message.trim()) return;
 
     let activeSession = selectedSession;
+    let isNewSession = false;
+
+    // 🔹 Jika belum ada sesi, buat baru
     if (!activeSession) {
+      isNewSession = true;
       const resNewSession = await fetch("/api/chat/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -196,25 +174,27 @@ export default function ChatPage() {
 
       setSelectedSession(activeSession);
       setSessions((prev) => [newSession, ...prev]);
-      setMessages([]);
     }
 
+    // 🔹 Tambahkan pesan user dulu di UI
     setMessages((prev) => [...prev, { sender: "user", text: message }]);
     setLoading(true);
 
+    // 🔹 Kirim ke backend
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        message,
         userId: user.uid,
         sessionId: activeSession,
+        message, // kirim pesan terbaru, bukan array
       }),
     });
 
     const data = await res.json();
 
-    if (messages.length === 0) {
+    // 🔹 Update judul sesi kalau baru dibuat
+    if (isNewSession) {
       await fetch(`/api/chat/sessions/${activeSession}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -232,6 +212,7 @@ export default function ChatPage() {
       );
     }
 
+    // 🔹 Tambahkan respons bot
     setMessages((prev) => [...prev, { sender: "bot", text: data.reply }]);
     setLoading(false);
   };
@@ -263,7 +244,24 @@ export default function ChatPage() {
     });
 
     if (res.ok) {
-      setSessions((prev) => prev.filter((s) => s._id !== sessionId));
+      // 1. Hitung daftar sesi baru terlebih dahulu
+      const newSessions = sessions.filter((s) => s._id !== sessionId);
+
+      // 2. Perbarui state daftar sesi
+      setSessions(newSessions); // 3. Cek apakah sesi yang dihapus adalah sesi yang sedang aktif
+
+      if (selectedSession === sessionId) {
+        // 4. Jika ya, pilih sesi baru
+        if (newSessions.length > 0) {
+          // Pilih sesi pertama dari daftar baru sebagai ganti
+          setSelectedSession(newSessions[0]._id);
+        } else {
+          // Jika tidak ada sesi tersisa, kosongkan semuanya
+          setSelectedSession(null);
+          setMessages([]); // <-- Ini penting untuk membersihkan chatbox
+        }
+      }
+      // Jika sesi yang dihapus BUKAN yang aktif, kita tidak perlu melakukan apa-apa lagi
     }
   };
 
@@ -357,7 +355,13 @@ export default function ChatPage() {
           </div>
         </header>
 
-        <ChatBox messages={messages} loading={loading} />
+        <ChatBox
+          key={selectedSession}
+          messages={messages}
+          loading={loading}
+          sessionId={selectedSession}
+          userId={user?.uid}
+        />
         <ChatInput onSend={handleSend} />
       </div>
     </div>
