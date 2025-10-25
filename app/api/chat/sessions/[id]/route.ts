@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
+import Chat from "@/models/Chat";
 import ChatSession from "@/models/ChatSession";
 
 // ✅ UPDATE SESSION (PUT)
@@ -43,16 +44,24 @@ export async function DELETE(
   const id = (await params).id;
 
   try {
-    const deleted = await ChatSession.findByIdAndDelete(id);
-
-    if (!deleted) {
+    const session = await ChatSession.findById(id);
+    if (!session) {
       return NextResponse.json(
         { error: "Session tidak ditemukan" },
         { status: 404 }
       );
     }
 
-    return NextResponse.json({ message: "Session berhasil dihapus" });
+    // Hapus session
+    await ChatSession.findByIdAndDelete(id);
+
+    // Hapus semua chat yang memiliki sessionId = id
+    const deleteResult = await Chat.deleteMany({ sessionId: id });
+
+    return NextResponse.json({
+      message: "Session dan chat terkait berhasil dihapus",
+      deletedChats: deleteResult.deletedCount ?? 0,
+    });
   } catch (err) {
     return NextResponse.json(
       { error: "Gagal menghapus session" },
