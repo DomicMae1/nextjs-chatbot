@@ -7,6 +7,7 @@ import { auth } from "@/lib/firebase";
 import ChatBox from "@/components/ChatBox";
 import ChatInput from "@/components/ChatInput";
 import { useRouter } from "next/navigation";
+import { SquarePen, Pencil, Trash2, Columns2 } from "lucide-react";
 
 interface Message {
   sender: string;
@@ -28,6 +29,8 @@ export default function ChatPage() {
   const [userData, setUserData] = useState<any>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const router = useRouter();
 
   const handleLogout = async () => {
@@ -38,6 +41,10 @@ export default function ChatPage() {
     setUser(null);
     setUserData(null);
     router.push("/login");
+  };
+
+  const handleToggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
   };
 
   useEffect(() => {
@@ -74,6 +81,32 @@ export default function ChatPage() {
           if (sessionsData.length > 0) {
             const firstSessionId = sessionsData[0]._id;
             setSelectedSession(firstSessionId);
+
+            try {
+              const res = await fetch(
+                `/api/chat/history?userId=${currentUser.uid}&sessionId=${firstSessionId}`
+              );
+
+              if (!res.ok) throw new Error("Gagal memuat chat session");
+
+              const data = await res.json();
+
+              const formatted = data
+                .map((c: any) => [
+                  { sender: "user", text: c.message },
+                  { sender: "bot", text: c.response },
+                ])
+                .flat();
+
+              setMessages(formatted);
+            } catch (err) {
+              console.error("Gagal memuat history awal:", err);
+              setMessages([
+                { sender: "bot", text: "⚠️ Gagal memuat riwayat chat." },
+              ]);
+            } finally {
+              setLoading(false);
+            }
           } else {
             setSelectedSession(null);
             setMessages([]);
@@ -274,29 +307,36 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      <aside className="w-64 bg-gray-900 text-white flex flex-col">
+      <aside
+        className={`bg-gray-900 text-white flex flex-col transition-all duration-300 ease-in-out ${
+          isSidebarOpen ? "w-64" : "w-0"
+        } overflow-hidden`}
+      >
         <div className="p-4 border-b border-gray-700 flex justify-between items-center">
           <h2 className="text-lg font-semibold">List Chat</h2>
+        </div>
+
+        <div className="w-full px-2 pt-4 pb-4 ">
           <button
             onClick={handleNewSession}
-            className="text-sm bg-blue-600 px-2 py-1 rounded hover:bg-blue-700"
+            className="w-58 font-medium px-3 py-4 text-left rounded-xl hover:bg-gray-700 transition-colors gap-2 flex justify-start items-center"
           >
-            + Baru
+            <SquarePen size={20} /> Baru
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto p-2">
           {sessions.length === 0 ? (
             <p className="text-sm text-gray-400 p-4">
               Belum ada sesi chat — buat baru untuk memulai
             </p>
           ) : (
-            <ul>
+            <ul className="space-y-2">
               {sessions.map((s) => (
                 <li
                   key={s._id}
-                  className={`group px-3 py-3 border-b border-gray-800 hover:bg-gray-700 transition-colors cursor-pointer ${
-                    selectedSession === s._id ? "bg-gray-700" : ""
+                  className={`group px-3 py-3 border-b border-gray-800 hover:bg-gray-700 rounded-xl transition-colors cursor-pointer ${
+                    selectedSession === s._id ? "bg-gray-700 rounded-xl" : ""
                   }`}
                   onClick={() => handleSelectSession(s._id)}
                 >
@@ -310,25 +350,42 @@ export default function ChatPage() {
                       </p>
                     </div>
 
-                    <div className="flex gap-2 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="relative">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleRenameSession(s._id);
+                          setOpenMenu(openMenu === s._id ? null : s._id);
                         }}
-                        className="text-xs bg-yellow-500 hover:bg-yellow-600 px-2 py-1 rounded"
+                        className="p-2 hover:bg-gray-600 rounded-md transition-colors"
                       >
-                        Edit
+                        ⋯
                       </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteSession(s._id);
-                        }}
-                        className="text-xs bg-red-500 hover:bg-red-600 px-2 py-1 rounded"
-                      >
-                        Hapus
-                      </button>
+
+                      {/* Popout menu */}
+                      {openMenu === s._id && (
+                        <div className="absolute right-0 mt-2 w-28 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenu(null);
+                              handleRenameSession(s._id);
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-700 flex justify-start items-center gap-2"
+                          >
+                            <Pencil size={20} /> Edit
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpenMenu(null);
+                              handleDeleteSession(s._id);
+                            }}
+                            className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-gray-700 flex justify-start items-center gap-2"
+                          >
+                            <Trash2 size={20} /> Hapus
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </li>
@@ -349,9 +406,17 @@ export default function ChatPage() {
 
       <div className="flex flex-col flex-1">
         <header className="flex justify-between items-center bg-gray-800 text-white px-4 py-4">
-          <div>
-            <h1 className="text-lg font-bold">Chatbot</h1>
-            <p className="text-xs opacity-75">Halo, {displayName}</p>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handleToggleSidebar}
+              className="p-2 rounded-md hover:bg-gray-700 transition-colors"
+            >
+              <Columns2 size={20} />
+            </button>
+            <div>
+              <h1 className="text-lg font-bold">Chatbot</h1>
+              <p className="text-xs opacity-75">Halo, {displayName}</p>
+            </div>
           </div>
         </header>
 
