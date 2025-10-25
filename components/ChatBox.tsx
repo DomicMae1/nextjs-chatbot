@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Copy, Check } from "lucide-react";
 
 interface Message {
   sender: string;
@@ -23,6 +24,7 @@ export default function ChatBox({
 }: ChatBoxProps) {
   const chatContainerRef = useRef<HTMLDivElement | null>(null);
   const [displayedMessages, setDisplayedMessages] = useState<Message[]>([]);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   // Kosongkan chat saat sessionId berubah
   useEffect(() => {
@@ -46,6 +48,16 @@ export default function ChatBox({
     }
   }, [displayedMessages]);
 
+  const handleCopy = async (text: string, index: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 2000);
+    } catch (err) {
+      console.error("Gagal menyalin teks:", err);
+    }
+  };
+
   // Jika belum pilih session
   if (!sessionId) {
     return (
@@ -67,17 +79,35 @@ export default function ChatBox({
   return (
     <div
       ref={chatContainerRef}
-      className="flex-1 overflow-y-auto p-4 space-y-3"
+      className="flex-1 overflow-y-auto p-4 space-y-3 px-24 py-12"
     >
       {displayedMessages.map((m, i) => (
         <div
           key={i}
-          className={`max-w-[75%] p-3 rounded-xl whitespace-pre-wrap ${
+          className={`relative max-w-[60%] p-3 rounded-xl whitespace-pre-wrap ${
             m.sender === "user"
-              ? "bg-blue-500 text-white ml-auto"
-              : "bg-gray-100 text-gray-900"
+              ? "bg-blue-500 text-white"
+              : "bg-gray-400 text-gray-900 pt-12 ml-auto"
           }`}
         >
+          {/* Tombol Copy hanya untuk pesan AI */}
+          {m.sender !== "user" && (
+            <button
+              onClick={() => handleCopy(m.text, i)}
+              className="absolute top-1 right-2 text-xs text-gray-600 hover:text-gray-900 bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded transition flex justify-between items-center gap-2"
+            >
+              {copiedIndex === i ? (
+                <>
+                  <Check /> <span>Copied!</span>
+                </>
+              ) : (
+                <>
+                  {" "}
+                  <Copy size={20} /> <span>Copy code</span>
+                </>
+              )}
+            </button>
+          )}
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
@@ -102,7 +132,7 @@ export default function ChatBox({
       ))}
 
       {loading && displayedMessages.length > 0 && (
-        <div className="bg-gray-200 text-gray-600 px-3 py-2 rounded-xl w-fit">
+        <div className="bg-gray-200 text-gray-600 px-3 py-2 rounded-xl w-fit ml-auto">
           Mengetik...
         </div>
       )}
