@@ -86,15 +86,15 @@ export default function ChatBox({
           key={i}
           className={`relative max-w-[60%] p-3 rounded-xl whitespace-pre-wrap ${
             m.sender === "user"
-              ? "bg-blue-500 text-white"
-              : "bg-gray-400 text-gray-900 pt-12 ml-auto"
+              ? "bg-blue-400 text-white"
+              : "bg-gray-200 text-black pt-12 ml-auto"
           }`}
         >
           {/* Tombol Copy hanya untuk pesan AI */}
           {m.sender !== "user" && (
             <button
               onClick={() => handleCopy(m.text, i)}
-              className="absolute top-1 right-2 text-xs text-gray-600 hover:text-gray-900 bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded transition flex justify-between items-center gap-2"
+              className="absolute top-2 right-2 text-xs text-gray-600 hover:text-gray-900 bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded transition flex justify-between items-center gap-2"
             >
               {copiedIndex === i ? (
                 <>
@@ -102,8 +102,7 @@ export default function ChatBox({
                 </>
               ) : (
                 <>
-                  {" "}
-                  <Copy size={20} /> <span>Copy code</span>
+                  <Copy size={20} />
                 </>
               )}
             </button>
@@ -119,7 +118,7 @@ export default function ChatBox({
               ),
               p: ({ children }) => <p className="mb-2">{children}</p>,
               strong: ({ children }) => (
-                <strong className="font-bold text-blue-700">{children}</strong>
+                <strong className="font-bold text-black">{children}</strong>
               ),
               li: ({ children }) => (
                 <li className="ml-5 list-disc">{children}</li>
