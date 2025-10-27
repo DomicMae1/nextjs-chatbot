@@ -29,6 +29,7 @@ interface Session {
   title: string;
   preview?: string;
   createdAt?: string;
+  isPinned?: boolean;
 }
 
 export default function ChatPage() {
@@ -310,6 +311,80 @@ export default function ChatPage() {
     }
   };
 
+  const handlePinSession = async (
+    sessionId: string,
+    currentStatus: boolean | undefined
+  ) => {
+    if (!user) return;
+    const newPinStatus = !currentStatus; // Toggle status
+
+    // Optimistic UI Update & Sort
+    setSessions((prev) => {
+      const updatedSessions = prev.map((s) =>
+        s._id === sessionId ? { ...s, isPinned: newPinStatus } : s
+      );
+      // Urutkan ulang setelah update pin status
+      updatedSessions.sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1; // a (pinned) comes first
+        if (!a.isPinned && b.isPinned) return 1; // b (pinned) comes first
+        // If pin status is the same, sort by date descending (newest first)
+        return (
+          new Date(b.createdAt || 0).getTime() -
+          new Date(a.createdAt || 0).getTime()
+        );
+      });
+      return updatedSessions;
+    });
+    setOpenMenu(null); // Tutup menu
+
+    try {
+      // Panggil API backend untuk update
+      const res = await fetch(`/api/chat/sessions/${sessionId}/pin`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPinned: newPinStatus }),
+      });
+
+      if (!res.ok) {
+        // Rollback jika API gagal
+        console.error("Gagal update pin status di backend");
+        setSessions((prev) => {
+          const rolledBackSessions = prev.map(
+            (s) => (s._id === sessionId ? { ...s, isPinned: currentStatus } : s) // Kembalikan status lama
+          );
+          rolledBackSessions.sort((a, b) => {
+            // Urutkan lagi
+            if (a.isPinned && !b.isPinned) return -1;
+            if (!a.isPinned && b.isPinned) return 1;
+            return (
+              new Date(b.createdAt || 0).getTime() -
+              new Date(a.createdAt || 0).getTime()
+            );
+          });
+          return rolledBackSessions;
+        });
+      }
+      // Jika berhasil, UI sudah optimis terupdate
+    } catch (error) {
+      // Rollback jika ada error network
+      console.error("Error saat pin session:", error);
+      setSessions((prev) => {
+        const rolledBackSessions = prev.map((s) =>
+          s._id === sessionId ? { ...s, isPinned: currentStatus } : s
+        );
+        rolledBackSessions.sort((a, b) => {
+          if (a.isPinned && !b.isPinned) return -1;
+          if (!a.isPinned && b.isPinned) return 1;
+          return (
+            new Date(b.createdAt || 0).getTime() -
+            new Date(a.createdAt || 0).getTime()
+          );
+        });
+        return rolledBackSessions;
+      });
+    }
+  };
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       // Jika menu ada DAN target klik TIDAK berada di dalam menu
@@ -436,6 +511,12 @@ export default function ChatPage() {
                           >
                             <Pencil size={20} /> Edit
                           </button>
+                      {s.isPinned && (
+                        <Pin
+                          size={20}
+                          className="absolute -top-2 left-0 text-yellow-400"
+                        />
+                      )}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -456,6 +537,14 @@ export default function ChatPage() {
                                   handlePinSession(s._id, s.isPinned);
                                 }}
                                 className="w-full text-left px-3 py-2 text-sm hover:bg-gray-700 flex justify-start items-center gap-2"
+                              >
+                                {s.isPinned ? (
+                                  <PinOff size={16} />
+                                ) : (
+                                  <Pin size={16} />
+                                )}
+                                {s.isPinned ? "Lepas Sematan" : "Sematkan"}
+                              </button>
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -488,13 +577,17 @@ export default function ChatPage() {
           )}
         </div>
 
-        <div className="p-4 border-t border-gray-700">
-          <button
-            onClick={handleLogout}
-            className="w-full text-sm bg-red-500 px-3 py-2 rounded hover:bg-red-600"
-          >
-            Logout
-          </button>
+        <div
+          className={`p-4 ${isSidebarOpen ? "border-t border-gray-700" : ""}`}
+        >
+          {isSidebarOpen && (
+            <button
+              onClick={handleLogout}
+              className="w-full text-sm bg-red-500 px-3 py-2 rounded hover:bg-red-600"
+            >
+              Logout
+            </button>
+          )}
         </div>
       </aside>
 
