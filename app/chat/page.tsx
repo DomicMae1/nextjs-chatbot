@@ -7,6 +7,7 @@ import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import ChatBox from "@/components/ChatBox";
 import ChatInput from "@/components/ChatInput";
+import SearchModal from "@/components/SearchModal";
 import { useRouter } from "next/navigation";
 import {
   SquarePen,
@@ -29,6 +30,7 @@ interface Session {
   title: string;
   preview?: string;
   createdAt?: string;
+  matchedText?: string;
   isPinned?: boolean;
 }
 
@@ -41,6 +43,7 @@ export default function ChatPage() {
   const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const router = useRouter();
 
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -87,7 +90,20 @@ export default function ChatPage() {
             `/api/chat/sessions?userId=${currentUser.uid}`
           );
           if (!resSessions.ok) throw new Error("Gagal mengambil sesi");
-          const sessionsData = (await resSessions.json()) || [];
+          const sessionsData: Session[] = (await resSessions.json()) || []; // Ambil data
+
+          // --- TAMBAHKAN LOGIKA PENGURUTAN DI SINI ---
+          sessionsData.sort((a, b) => {
+            // Prioritaskan yang di-pin
+            if (a.isPinned && !b.isPinned) return -1; // a (pinned) duluan
+            if (!a.isPinned && b.isPinned) return 1; // b (pinned) duluan
+
+            // Jika status pin sama, urutkan berdasarkan tanggal descending (terbaru dulu)
+            // Pastikan createdAt ada dan valid sebelum mengurutkan
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return dateB - dateA;
+          });
           setSessions(sessionsData);
 
           if (sessionsData.length > 0) {
@@ -202,7 +218,7 @@ export default function ChatPage() {
     let activeSession = selectedSession;
     let isNewSession = false;
 
-    // 🔹 Jika belum ada sesi, buat baru
+    // 🔹 Jika belum ada sesi, buat baru dengan placeholder "Chat Baru"
     if (!activeSession) {
       isNewSession = true;
       const resNewSession = await fetch("/api/chat/sessions", {
@@ -239,23 +255,52 @@ export default function ChatPage() {
 
     const data = await res.json();
 
-    // 🔹 Update judul sesi kalau baru dibuat
-    if (isNewSession) {
-      await fetch(`/api/chat/sessions/${activeSession}`, {
-        method: "PATCH",
+    // 🔹 Jika judul masih "Chat Baru", ubah jadi ringkasan dari pesan pertama user
+    const currentSession = sessions.find((s) => s._id === activeSession);
+    if (currentSession && currentSession.title === "Chat Baru") {
+      // 🔹 Helper untuk ubah ke Title Case
+      const toTitleCase = (text: string) => {
+        return text
+          .toLowerCase()
+          .split(" ")
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(" ");
+      };
+
+      const summaryTitleRaw =
+        message.length > 60
+          ? message.substring(0, 60).split(/[.!?]/)[0] + "..."
+          : message;
+
+      const summaryTitle = toTitleCase(summaryTitleRaw);
+
+      const previewText =
+        message.length > 50 ? message.substring(0, 50) + "..." : message;
+
+      // 🔹 Update langsung ke database
+      const updateRes = await fetch(`/api/chat/sessions/${activeSession}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: message.substring(0, 30) || "Chat Baru",
+          title: summaryTitle,
+          preview: previewText,
         }),
       });
 
-      setSessions((prev) =>
-        prev.map((s) =>
-          s._id === activeSession
-            ? { ...s, title: message.substring(0, 30) || "Chat Baru" }
-            : s
-        )
-      );
+      if (updateRes.ok) {
+        console.log("✅ Updated title & preview:", summaryTitle, previewText);
+
+        // 🔹 Update state di frontend juga
+        setSessions((prev) =>
+          prev.map((s) =>
+            s._id === activeSession
+              ? { ...s, title: summaryTitle, preview: previewText }
+              : s
+          )
+        );
+      } else {
+        console.error("❌ Gagal update title & preview di database");
+      }
     }
 
     // 🔹 Tambahkan respons bot
@@ -463,60 +508,38 @@ export default function ChatPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-2">
-          {sessions.length === 0 ? (
-            <p className="text-sm text-gray-400 p-4">
-              Belum ada sesi chat — buat baru untuk memulai
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {sessions.map((s) => (
-                <li
-                  key={s._id}
-                  className={`group px-3 py-3 border-b border-gray-800 hover:bg-gray-700 rounded-xl transition-colors cursor-pointer ${
-                    selectedSession === s._id ? "bg-gray-700 rounded-xl" : ""
-                  }`}
-                  onClick={() => handleSelectSession(s._id)}
-                >
-                  <div className="flex justify-between items-center">
-                    <div className="flex-1">
-                      <p className="font-medium truncate">
-                        {s.title || "Chat tanpa judul"}
-                      </p>
-                      <p className="text-xs text-gray-400 truncate">
-                        {s.preview || ""}
-                      </p>
-                    </div>
-
-                    <div className="relative">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setOpenMenu(openMenu === s._id ? null : s._id);
-                        }}
-                        className="p-2 hover:bg-gray-600 rounded-md transition-colors"
-                      >
-                        ⋯
-                      </button>
-
-                      {/* Popout menu */}
-                      {openMenu === s._id && (
-                        <div className="absolute right-0 mt-2 w-28 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setOpenMenu(null);
-                              handleRenameSession(s._id);
-                            }}
-                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-700 flex justify-start items-center gap-2"
-                          >
-                            <Pencil size={20} /> Edit
-                          </button>
+          {isSidebarOpen && (
+            <>
+              {sessions.length === 0 ? (
+                <p className="text-sm text-gray-400 p-4">
+                  Belum ada sesi chat — buat baru untuk memulai
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {sessions.map((s) => (
+                    <li
+                      key={s._id}
+                      className={`group relative px-3 py-3 border-b border-gray-800 hover:bg-gray-700 rounded-xl transition-colors cursor-pointer ${
+                        selectedSession === s._id ? "bg-gray-700" : ""
+                      }`}
+                      onClick={() => handleSelectSession(s._id)}
+                    >
                       {s.isPinned && (
                         <Pin
                           size={20}
                           className="absolute -top-2 left-0 text-yellow-400"
                         />
                       )}
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm truncate">
+                            {s.title || "Chat tanpa judul"}
+                          </p>
+                          <p className="text-xs text-gray-400 truncate">
+                            {s.preview || ""}
+                          </p>
+                        </div>
+                        <div className="relative">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -610,6 +633,13 @@ export default function ChatPage() {
         />
         <ChatInput onSend={handleSend} />
       </div>
+      <SearchModal
+        isOpen={isSearchModalOpen}
+        onClose={() => setIsSearchModalOpen(false)}
+        userId={user?.uid}
+        onSelectSession={handleSelectSession}
+        sessions={sessions}
+      />
     </div>
   );
 }
