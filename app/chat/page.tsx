@@ -1,13 +1,22 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import ChatBox from "@/components/ChatBox";
 import ChatInput from "@/components/ChatInput";
 import { useRouter } from "next/navigation";
-import { SquarePen, Pencil, Trash2, Columns2 } from "lucide-react";
+import {
+  SquarePen,
+  Pencil,
+  Trash2,
+  Columns2,
+  Search,
+  Pin,
+  PinOff,
+} from "lucide-react";
 
 interface Message {
   sender: string;
@@ -32,6 +41,8 @@ export default function ChatPage() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const router = useRouter();
+
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -198,7 +209,8 @@ export default function ChatPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user.uid,
-          title: message.substring(0, 30) || "Chat Baru",
+          title: "Chat Baru",
+          preview: "",
         }),
       });
 
@@ -209,18 +221,18 @@ export default function ChatPage() {
       setSessions((prev) => [newSession, ...prev]);
     }
 
-    // 🔹 Tambahkan pesan user dulu di UI
+    // 🔹 Tambahkan pesan user ke UI
     setMessages((prev) => [...prev, { sender: "user", text: message }]);
     setLoading(true);
 
-    // 🔹 Kirim ke backend
+    // 🔹 Kirim pesan ke backend
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         userId: user.uid,
         sessionId: activeSession,
-        message, // kirim pesan terbaru, bukan array
+        message,
       }),
     });
 
@@ -298,6 +310,28 @@ export default function ChatPage() {
     }
   };
 
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Jika menu ada DAN target klik TIDAK berada di dalam menu
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpenMenu(null); // Tutup menu
+      }
+    };
+
+    // Tambahkan listener HANYA jika menu terbuka
+    if (openMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      // Hapus listener jika menu tertutup (ini penting!)
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+
+    // Fungsi cleanup: Hapus listener saat komponen unmount ATAU sebelum effect berjalan lagi
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [openMenu]);
+
   if (!user)
     return (
       <div className="p-8 text-center text-gray-700">Memeriksa login...</div>
@@ -309,19 +343,47 @@ export default function ChatPage() {
     <div className="flex h-screen bg-gray-100">
       <aside
         className={`bg-gray-900 text-white flex flex-col transition-all duration-300 ease-in-out ${
-          isSidebarOpen ? "w-64" : "w-0"
+          isSidebarOpen ? "w-64" : "w-20"
         } overflow-hidden`}
       >
-        <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-          <h2 className="text-lg font-semibold">List Chat</h2>
+        <div
+          className={`p-4 border-b border-gray-700 flex items-center ${
+            isSidebarOpen ? "justify-between" : "justify-center"
+          }`}
+        >
+          {isSidebarOpen && (
+            <h2 className="text-lg font-semibold ml-2">List Chat</h2>
+          )}
+          <button
+            onClick={handleToggleSidebar}
+            className="p-2 rounded-md hover:bg-gray-700 transition-colors"
+          >
+            <Columns2 size={20} />
+          </button>
         </div>
 
-        <div className="w-full px-2 pt-4 pb-4 ">
+        <div
+          className={`w-full px-2 pt-4 pb-4 flex flex-col ${
+            isSidebarOpen ? "items-stretch" : "items-center"
+          }`}
+        >
           <button
             onClick={handleNewSession}
-            className="w-58 font-medium px-3 py-4 text-left rounded-xl hover:bg-gray-700 transition-colors gap-2 flex justify-start items-center"
+            className={`text-sm px-3 py-2 rounded-xl hover:bg-gray-700 transition-colors flex items-center gap-2 ${
+              isSidebarOpen ? "justify-start" : "justify-center w-12 h-12"
+            }`}
           >
-            <SquarePen size={20} /> Baru
+            <SquarePen size={18} />
+            {isSidebarOpen && <span>New Chat</span>}
+          </button>
+          <button
+            onClick={() => setIsSearchModalOpen(true)}
+            className={`text-sm px-3 py-2 rounded-xl hover:bg-gray-700 transition-colors flex items-center gap-2 mt-2 ${
+              isSidebarOpen ? "justify-start" : "justify-center w-12 h-12"
+            }`}
+          >
+            <Search size={18} />
+            {isSidebarOpen && <span>Search Chat</span>}
           </button>
         </div>
 
@@ -377,20 +439,52 @@ export default function ChatPage() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setOpenMenu(null);
-                              handleDeleteSession(s._id);
+                              setOpenMenu(openMenu === s._id ? null : s._id);
                             }}
-                            className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-gray-700 flex justify-start items-center gap-2"
+                            className="p-2 hover:bg-gray-600 rounded-md transition-colors"
                           >
-                            <Trash2 size={20} /> Hapus
+                            ...
                           </button>
+                          {openMenu === s._id && (
+                            <div
+                              ref={menuRef}
+                              className="absolute right-0 mt-2 w-28 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10"
+                            >
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handlePinSession(s._id, s.isPinned);
+                                }}
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-700 flex justify-start items-center gap-2"
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenMenu(null);
+                                  handleRenameSession(s._id);
+                                }}
+                                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-700 flex justify-start items-center gap-2"
+                              >
+                                <Pencil size={16} /> Edit
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenMenu(null);
+                                  handleDeleteSession(s._id);
+                                }}
+                                className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-gray-700 flex justify-start items-center gap-2"
+                              >
+                                <Trash2 size={16} /> Hapus
+                              </button>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
           )}
         </div>
 
@@ -407,12 +501,6 @@ export default function ChatPage() {
       <div className="flex flex-col flex-1">
         <header className="flex justify-between items-center bg-gray-800 text-white px-4 py-4">
           <div className="flex items-center gap-4">
-            <button
-              onClick={handleToggleSidebar}
-              className="p-2 rounded-md hover:bg-gray-700 transition-colors"
-            >
-              <Columns2 size={20} />
-            </button>
             <div>
               <h1 className="text-lg font-bold">Chatbot</h1>
               <p className="text-xs opacity-75">Halo, {displayName}</p>
