@@ -6,6 +6,7 @@ interface IChatSession extends Document {
   preview: string;
   messages: mongoose.Types.ObjectId[]; // ✅ tambahkan ini
   createdAt: Date;
+  isPinned: boolean;
 }
 
 const ChatSessionSchema = new Schema<IChatSession>(
@@ -15,6 +16,7 @@ const ChatSessionSchema = new Schema<IChatSession>(
     preview: { type: String, default: "" },
     messages: [{ type: Schema.Types.ObjectId, ref: "Chat" }], // ✅ tambahkan
     createdAt: { type: Date, default: Date.now },
+    isPinned: { type: Boolean, default: false },
   },
   {
     collection: "chatsessions",
