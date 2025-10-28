@@ -28,6 +28,22 @@ export default function ChatInput({
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = "auto";
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
+    }
+  }, [input]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Enter untuk kirim, Shift+Enter untuk baris baru
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e as unknown as React.FormEvent);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input.trim() && !disabled) {
@@ -55,7 +71,13 @@ export default function ChatInput({
         placeholder="Ketik pesan... (Shift + Enter untuk baris baru)"
         value={input}
         onChange={(e) => setInput(e.target.value)}
+        onKeyDown={handleKeyDown}
         disabled={disabled}
+        rows={1}
+        style={{
+          maxHeight: "200px", // batas tinggi
+          overflowY: "auto", // biar bisa di-scroll
+        }}
       />
       <button
         type="submit"
