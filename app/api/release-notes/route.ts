@@ -61,3 +61,70 @@ export async function POST(req: Request) {
     );
   }
 }
+
+export async function PUT(req: Request) {
+  const body = await req.json();
+  const { title, description, date, _id } = body;
+
+  if (!_id) {
+    return NextResponse.json(
+      { error: "Parameter '_id' diperlukan untuk update" },
+      { status: 400 }
+    );
+  }
+
+  await connectDB();
+
+  try {
+    const updated = await ReleaseNote.findByIdAndUpdate(
+      _id,
+      { title, description, date },
+      { new: true }
+    );
+
+    if (!updated)
+      return NextResponse.json(
+        { error: "Release note tidak ditemukan" },
+        { status: 404 }
+      );
+
+    return NextResponse.json(updated);
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json(
+      { error: "Gagal mengupdate release note" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
+
+  if (!id) {
+    return NextResponse.json(
+      { error: "Parameter 'id' diperlukan untuk menghapus" },
+      { status: 400 }
+    );
+  }
+
+  await connectDB();
+
+  try {
+    const deleted = await ReleaseNote.findByIdAndDelete(id);
+    if (!deleted)
+      return NextResponse.json(
+        { error: "Release note tidak ditemukan" },
+        { status: 404 }
+      );
+
+    return NextResponse.json({ message: "Release note berhasil dihapus" });
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json(
+      { error: "Gagal menghapus release note" },
+      { status: 500 }
+    );
+  }
+}
