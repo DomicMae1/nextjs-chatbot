@@ -86,7 +86,7 @@ export default function ChatBox({
           key={i}
           className={`relative max-w-[60%] p-3 rounded-xl whitespace-pre-wrap ${
             m.sender === "user"
-              ? "bg-blue-400 text-white"
+              ? "bg-blue-300 text-black"
               : "bg-gray-200 text-black pt-12 ml-auto"
           }`}
         >
@@ -114,9 +114,9 @@ export default function ChatBox({
                 <h1 className="text-2xl font-bold mb-2">{children}</h1>
               ),
               h2: ({ children }) => (
-                <h2 className="text-xl font-semibold mt-3 mb-1">{children}</h2>
+                <h2 className="text-xl font-semibold mt-1 mb-1">{children}</h2>
               ),
-              p: ({ children }) => <p className="mb-2">{children}</p>,
+              p: ({ children }) => <p className="">{children}</p>,
               strong: ({ children }) => (
                 <strong className="font-bold text-black">{children}</strong>
               ),
