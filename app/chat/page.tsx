@@ -20,6 +20,7 @@ import {
   Sun,
   Moon,
 } from "lucide-react";
+import SidebarUser from "@/components/SidebarUser";
 
 interface Message {
   sender: string;
@@ -639,14 +640,11 @@ export default function ChatPage() {
             isSidebarOpen && isDark ? "border-gray-700" : ""
           }`}
         >
-          {isSidebarOpen && (
-            <button
-              onClick={handleLogout}
-              className="w-full text-sm bg-red-500 px-3 py-2 rounded hover:bg-red-600"
-            >
-              Logout
-            </button>
-          )}
+          <SidebarUser
+            user={userData}
+            onLogout={handleLogout}
+            isSidebarOpen={isSidebarOpen}
+          />
         </div>
       </aside>
 
@@ -673,6 +671,37 @@ export default function ChatPage() {
             >
               {isDark ? <Sun size={20} /> : <Moon size={20} />}
             </button>
+            {/* Tombol hapus session aktif */}
+            <button
+              onClick={async () => {
+                if (!selectedSession) {
+                  alert("Tidak ada sesi yang dipilih untuk dihapus!");
+                  return;
+                }
+
+                const confirmDelete = confirm(
+                  "Apakah kamu yakin ingin menghapus sesi chat ini?"
+                );
+                if (confirmDelete) {
+                  try {
+                    await handleDeleteSession(selectedSession); // 🔹 Tunggu proses hapus selesai
+                    window.location.reload(); // 🔄 Reload halaman setelah berhasil
+                  } catch (error) {
+                    console.error("Gagal menghapus sesi:", error);
+                    alert("Terjadi kesalahan saat menghapus sesi.");
+                  }
+                }
+              }}
+              className={`p-2 rounded-md flex items-center justify-center ${
+                isDark
+                  ? "hover:bg-gray-700 text-red-400 hover:text-red-300"
+                  : "hover:bg-gray-300 text-red-500 hover:text-red-600"
+              } transition gap-2`}
+              title="Hapus sesi chat ini"
+            >
+              <Trash2 size={18} /> Hapus
+            </button>
+          </div>
         </header>
 
         <ChatBox
