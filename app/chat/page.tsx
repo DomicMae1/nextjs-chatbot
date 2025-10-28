@@ -17,6 +17,8 @@ import {
   Search,
   Pin,
   PinOff,
+  Sun,
+  Moon,
 } from "lucide-react";
 
 interface Message {
@@ -44,9 +46,25 @@ export default function ChatPage() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [theme, setTheme] = useState("dark");
   const router = useRouter();
 
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("theme");
+    if (saved) setTheme(saved);
+  }, []);
+
+  // 🌗 Update theme ke body dan simpan ke localStorage
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+  };
 
   const handleLogout = async () => {
     await signOut(auth);
@@ -452,6 +470,14 @@ export default function ChatPage() {
     };
   }, [openMenu]);
 
+  const isDark = theme === "dark";
+  const bgBase = isDark ? "bg-gray-900" : "bg-white";
+  const textBase = isDark ? "text-white" : "text-gray-900";
+  const sidebarBg = isDark
+    ? "bg-gray-900 border-gray-600 border-r"
+    : "bg-white border-gray-300 border-r";
+  const hoverBg = isDark ? "hover:bg-gray-700" : "hover:bg-gray-200";
+
   if (!user)
     return (
       <div className="p-8 text-center text-gray-700">Memeriksa login...</div>
@@ -460,14 +486,17 @@ export default function ChatPage() {
   const displayName = userData?.name || user?.displayName || "User";
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className={`flex h-screen ${bgBase} ${textBase}`}>
       <aside
-        className={`bg-gray-900 text-white flex flex-col transition-all duration-300 ease-in-out ${
+        className={`${sidebarBg} flex flex-col transition-all duration-300 ease-in-out ${
           isSidebarOpen ? "w-64" : "w-20"
         } overflow-hidden`}
       >
+        {/* Header */}
         <div
-          className={`p-4 border-b border-gray-700 flex items-center ${
+          className={`p-4 ${
+            isDark ? "border-gray-700" : "border-gray-200"
+          } flex items-center ${
             isSidebarOpen ? "justify-between" : "justify-center"
           }`}
         >
@@ -476,12 +505,13 @@ export default function ChatPage() {
           )}
           <button
             onClick={handleToggleSidebar}
-            className="p-2 rounded-md hover:bg-gray-700 transition-colors"
+            className={`p-2 rounded-md ${hoverBg} transition-colors`}
           >
             <Columns2 size={20} />
           </button>
         </div>
 
+        {/* Tombol utama */}
         <div
           className={`w-full px-2 pt-4 pb-4 flex flex-col ${
             isSidebarOpen ? "items-stretch" : "items-center"
@@ -489,7 +519,7 @@ export default function ChatPage() {
         >
           <button
             onClick={handleNewSession}
-            className={`text-sm px-3 py-2 rounded-xl hover:bg-gray-700 transition-colors flex items-center gap-2 ${
+            className={`text-sm px-3 py-2 rounded-xl ${hoverBg} flex items-center gap-2 ${
               isSidebarOpen ? "justify-start" : "justify-center w-12 h-12"
             }`}
           >
@@ -498,7 +528,7 @@ export default function ChatPage() {
           </button>
           <button
             onClick={() => setIsSearchModalOpen(true)}
-            className={`text-sm px-3 py-2 rounded-xl hover:bg-gray-700 transition-colors flex items-center gap-2 mt-2 ${
+            className={`text-sm px-3 py-2 rounded-xl ${hoverBg} flex items-center gap-2 mt-2 ${
               isSidebarOpen ? "justify-start" : "justify-center w-12 h-12"
             }`}
           >
@@ -507,6 +537,7 @@ export default function ChatPage() {
           </button>
         </div>
 
+        {/* List sesi chat */}
         <div className="flex-1 overflow-y-auto p-2">
           {isSidebarOpen && (
             <>
@@ -519,8 +550,10 @@ export default function ChatPage() {
                   {sessions.map((s) => (
                     <li
                       key={s._id}
-                      className={`group relative px-3 py-3 border-b border-gray-800 hover:bg-gray-700 rounded-xl transition-colors cursor-pointer ${
-                        selectedSession === s._id ? "bg-gray-700" : ""
+                      className={`group relative px-3 py-3 hover:bg-gray-700 hover:text-white rounded-xl ${
+                        selectedSession === s._id
+                          ? "bg-gray-700 text-white"
+                          : ""
                       }`}
                       onClick={() => handleSelectSession(s._id)}
                     >
@@ -600,8 +633,11 @@ export default function ChatPage() {
           )}
         </div>
 
+        {/* Sidebar user — TETAP dirender */}
         <div
-          className={`p-4 ${isSidebarOpen ? "border-t border-gray-700" : ""}`}
+          className={`py-4 px-2 transition-colors duration-300 ${
+            isSidebarOpen && isDark ? "border-gray-700" : ""
+          }`}
         >
           {isSidebarOpen && (
             <button
@@ -615,13 +651,28 @@ export default function ChatPage() {
       </aside>
 
       <div className="flex flex-col flex-1">
-        <header className="flex justify-between items-center bg-gray-800 text-white px-4 py-4">
+        <header
+          className={`flex justify-between items-center ${
+            isDark ? "bg-gray-800 text-white" : "bg-gray-100 text-gray-900"
+          } px-4 py-4`}
+        >
           <div className="flex items-center gap-4">
             <div>
               <h1 className="text-lg font-bold">Chatbot</h1>
               <p className="text-xs opacity-75">Halo, {displayName}</p>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            {/* Tombol Dark/Light mode */}
+            <button
+              onClick={toggleTheme}
+              className={`p-2 rounded-md ${
+                isDark ? "hover:bg-gray-700" : "hover:bg-gray-300"
+              } transition`}
+              title={`Switch to ${isDark ? "Light" : "Dark"} Mode`}
+            >
+              {isDark ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
         </header>
 
         <ChatBox
