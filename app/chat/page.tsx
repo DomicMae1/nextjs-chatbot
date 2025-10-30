@@ -8,6 +8,7 @@ import { auth } from "@/lib/firebase";
 import ChatBox from "@/components/ChatBox";
 import ChatInput from "@/components/ChatInput";
 import SearchModal from "@/components/SearchModal";
+import ReportModal from "@/components/ReportModal";
 import { useRouter } from "next/navigation";
 import {
   SquarePen,
@@ -19,6 +20,8 @@ import {
   PinOff,
   Sun,
   Moon,
+  Menu,
+  Flag,
 } from "lucide-react";
 import SidebarUser from "@/components/SidebarUser";
 
@@ -47,6 +50,7 @@ export default function ChatPage() {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [theme, setTheme] = useState("dark");
   const router = useRouter();
 
@@ -671,36 +675,68 @@ export default function ChatPage() {
             >
               {isDark ? <Sun size={20} /> : <Moon size={20} />}
             </button>
-            {/* Tombol hapus session aktif */}
-            <button
-              onClick={async () => {
-                if (!selectedSession) {
-                  alert("Tidak ada sesi yang dipilih untuk dihapus!");
-                  return;
-                }
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpenMenu(openMenu === "" ? null : "");
+                }}
+                className="p-2 hover:bg-gray-600 rounded-md transition-colors"
+              >
+                <Menu size={16} />
+              </button>
+              {openMenu === "" && (
+                <div
+                  ref={menuRef}
+                  className="absolute right-0 mt-2 w-28 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10 p-2"
+                >
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsReportModalOpen(true); // ✅ buka modal report
+                      setOpenMenu(null); // tutup menu
+                    }}
+                    className={`w-full p-2 rounded-md flex items-center justify-start ${
+                      isDark
+                        ? "hover:bg-gray-700 text-white"
+                        : "hover:bg-gray-700 text-white"
+                    } transition gap-2`}
+                  >
+                    <Flag size={16} /> Report
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!selectedSession) {
+                        alert("Tidak ada sesi yang dipilih untuk dihapus!");
+                        return;
+                      }
 
-                const confirmDelete = confirm(
-                  "Apakah kamu yakin ingin menghapus sesi chat ini?"
-                );
-                if (confirmDelete) {
-                  try {
-                    await handleDeleteSession(selectedSession); // 🔹 Tunggu proses hapus selesai
-                    window.location.reload(); // 🔄 Reload halaman setelah berhasil
-                  } catch (error) {
-                    console.error("Gagal menghapus sesi:", error);
-                    alert("Terjadi kesalahan saat menghapus sesi.");
-                  }
-                }
-              }}
-              className={`p-2 rounded-md flex items-center justify-center ${
-                isDark
-                  ? "hover:bg-gray-700 text-red-400 hover:text-red-300"
-                  : "hover:bg-gray-300 text-red-500 hover:text-red-600"
-              } transition gap-2`}
-              title="Hapus sesi chat ini"
-            >
-              <Trash2 size={18} /> Hapus
-            </button>
+                      const confirmDelete = confirm(
+                        "Apakah kamu yakin ingin menghapus sesi chat ini?"
+                      );
+                      if (confirmDelete) {
+                        try {
+                          await handleDeleteSession(selectedSession); // 🔹 Tunggu proses hapus selesai
+                          window.location.reload(); // 🔄 Reload halaman setelah berhasil
+                        } catch (error) {
+                          console.error("Gagal menghapus sesi:", error);
+                          alert("Terjadi kesalahan saat menghapus sesi.");
+                        }
+                      }
+                    }}
+                    className={`w-full p-2 rounded-md flex items-center justify-start ${
+                      isDark
+                        ? "hover:bg-gray-700 text-red-400"
+                        : "hover:bg-gray-300 text-red-500"
+                    } transition gap-2`}
+                    title="Hapus sesi chat ini"
+                  >
+                    <Trash2 size={18} /> Hapus
+                  </button>
+                </div>
+              )}
+            </div>
+            {/* Tombol hapus session aktif */}
           </div>
         </header>
 
@@ -719,6 +755,14 @@ export default function ChatPage() {
         userId={user?.uid}
         onSelectSession={handleSelectSession}
         sessions={sessions}
+      />
+      <ReportModal
+        userId={user?.uid}
+        isOpen={isReportModalOpen}
+        onOpenChange={setIsReportModalOpen}
+        onReportAdded={() => {
+          console.log("Report baru berhasil dibuat!");
+        }}
       />
     </div>
   );
