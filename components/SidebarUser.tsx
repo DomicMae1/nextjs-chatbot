@@ -7,7 +7,7 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
-import { LogOut, Scroll, CircleUserRound } from "lucide-react";
+import { LogOut, Scroll, CircleUserRound, BadgeInfo } from "lucide-react";
 
 export default function SidebarUser({
   user,
@@ -132,12 +132,24 @@ export default function SidebarUser({
               </div>
             )}
 
+            <button
+              onClick={() => router.push("/policies")}
+              className={`w-full text-left text-sm px-3 py-2 rounded-md font-semibold transition-colors duration-200 flex items-center gap-2 ${
+                isDark
+                  ? "hover:bg-gray-700 text-white"
+                  : "hover:bg-blue-300 text-black"
+              }`}
+            >
+              <BadgeInfo size={16} />
+              <span>Term & Policy</span>
+            </button>
+
             {/* Tombol Release Notes */}
             <button
               onClick={() => router.push("/release-notes")}
               className={`w-full text-left text-sm px-3 py-2 rounded-md font-semibold transition-colors duration-200 flex items-center gap-2 ${
                 isDark
-                  ? "hover:bg-blue-700 text-white"
+                  ? "hover:bg-gray-700 text-white"
                   : "hover:bg-blue-300 text-black"
               }`}
             >
