@@ -22,6 +22,7 @@ import {
   Moon,
   Menu,
   Flag,
+  Gamepad2,
 } from "lucide-react";
 import SidebarUser from "@/components/SidebarUser";
 
@@ -540,6 +541,15 @@ export default function ChatPage() {
             <Search size={18} />
             {isSidebarOpen && <span>Search Chat</span>}
           </button>
+          <button
+            onClick={() => router.push("/trivia")}
+            className={`text-sm px-3 py-2 rounded-xl ${hoverBg} flex items-center gap-2 mt-2 ${
+              isSidebarOpen ? "justify-start" : "justify-center w-12 h-12"
+            }`}
+          >
+            <Gamepad2 size={18} />
+            {isSidebarOpen && <span>Game with AI</span>}
+          </button>
         </div>
 
         {/* List sesi chat */}
@@ -604,7 +614,7 @@ export default function ChatPage() {
                                 ) : (
                                   <Pin size={16} />
                                 )}
-                                {s.isPinned ? "Lepas Sematan" : "Sematkan"}
+                                {s.isPinned ? "Lepas" : "Sematkan"}
                               </button>
                               <button
                                 onClick={(e) => {
