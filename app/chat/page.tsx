@@ -565,9 +565,9 @@ export default function ChatPage() {
                   {sessions.map((s) => (
                     <li
                       key={s._id}
-                      className={`group relative px-3 py-3 hover:bg-gray-700 hover:text-white rounded-xl ${
+                      className={`group relative px-3 py-3 hover:bg-gray-700  hover:dark:bg-gray-700 rounded-xl  ${
                         selectedSession === s._id
-                          ? "bg-gray-700 text-white"
+                          ? "hover:bg-gray-700 bg-gray-500 dark:bg-gray-700 "
                           : ""
                       }`}
                       onClick={() => handleSelectSession(s._id)}
@@ -575,15 +575,15 @@ export default function ChatPage() {
                       {s.isPinned && (
                         <Pin
                           size={20}
-                          className="absolute -top-2 left-0 text-yellow-400"
+                          className="absolute -top-2 -left-2 text-black dark:text-white -rotate-[25deg] transition-transform duration-200"
                         />
                       )}
-                      <div className="flex justify-between items-start">
+                      <div className="flex justify-between items-start text-black dark:text-white  hover:text-white">
                         <div className="flex-1 min-w-0">
                           <p className="text-sm truncate">
                             {s.title || "Chat tanpa judul"}
                           </p>
-                          <p className="text-xs text-gray-400 truncate">
+                          <p className="text-xs dark:text-gray-400 text-gray-400 truncate">
                             {s.preview || ""}
                           </p>
                         </div>
@@ -600,7 +600,7 @@ export default function ChatPage() {
                           {openMenu === s._id && (
                             <div
                               ref={menuRef}
-                              className="absolute right-0 mt-2 w-28 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10"
+                              className="absolute right-0 mt-2 w-28 bg-gray-800 border border-gray-700 rounded-lg shadow-lg z-10 text-white"
                             >
                               <button
                                 onClick={(e) => {
